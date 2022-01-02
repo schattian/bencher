@@ -36,7 +36,7 @@ func main() {
 
 	exitStatus, err := c.Run()
 	if err != nil {
-		log.Println(err)
+		log.Fatal(err)
 	}
 
 	os.Exit(exitStatus)
@@ -102,7 +102,7 @@ func popNameFlag(args []string) ([]string, string) {
 }
 
 func pruneContainers(ctx context.Context, docker *client.Client) error {
-	args := filters.NewArgs(filters.Arg("label", bencher.ContainersLabel))
+	args := filters.NewArgs(filters.Arg("label", fmt.Sprintf("%s=server", bencher.ContainersLabel)))
 	_, err := docker.ContainersPrune(ctx, args)
 	if err != nil {
 		return err
@@ -136,7 +136,6 @@ func (cmd *runCmd) prepareRuntime(ctx context.Context, version string, forward [
 		return err
 	}
 
-	log.Println("preparing go vendor...")
 	execCmd = exec.Command("go", "mod", "vendor")
 	execCmd.Dir = versionPath
 	err = execCmd.Run()
@@ -144,7 +143,6 @@ func (cmd *runCmd) prepareRuntime(ctx context.Context, version string, forward [
 		return err
 	}
 
-	log.Println("preparing docker container...")
 	r, err := cmd.docker.ImagePull(ctx, minDockerImage, types.ImagePullOptions{})
 	if err != nil {
 		return err
@@ -162,9 +160,10 @@ func (cmd *runCmd) prepareRuntime(ctx context.Context, version string, forward [
 	if err != nil {
 		return err
 	}
-
+	db, err := initDB()
+	defer db.Close()
 	if err != nil {
-		return errors.Wrap(err, "job.init")
+		return err
 	}
 	return nil
 }
@@ -186,7 +185,9 @@ func runServerCmd(ctx context.Context, docker *client.Client, cmd []string, debu
 				defaultUnixSocket:          {},
 				bencher.HostServerRootPath: {},
 			},
-			Cmd: cmd,
+			Cmd:          cmd,
+			AttachStdout: debug,
+			AttachStderr: debug,
 		},
 		&container.HostConfig{
 			Mounts: []mount.Mount{

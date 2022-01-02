@@ -37,27 +37,17 @@ import (
 // }
 
 func main() {
-	db, err := initDB()
+	c := cli.NewCLI("app", "1.0.0")
+	c.Args = os.Args[1:]
+	c.Commands = map[string]cli.CommandFactory{
+		"sched": prepareSched,
+	}
+	rand.Seed(time.Now().Unix())
+	exitStatus, err := c.Run()
 	if err != nil {
 		log.Fatal(err)
 	}
-	docker, err := client.NewClientWithOpts(client.FromEnv)
-	if err != nil {
-		log.Fatal(err)
-	}
-	for {
-		c := cli.NewCLI("app", "1.0.0")
-		c.Args = os.Args[1:]
-		c.Commands = map[string]cli.CommandFactory{
-			"sched": prepareSched(db, docker),
-		}
-		rand.Seed(time.Now().Unix())
-		exitStatus, err := c.Run()
-		if err != nil {
-			log.Println(err)
-		}
-		os.Exit(exitStatus)
-	}
+	os.Exit(exitStatus)
 }
 
 func initDB() (*bbolt.DB, error) {
@@ -65,7 +55,7 @@ func initDB() (*bbolt.DB, error) {
 }
 
 func pidLock() (func() error, error) {
-	f, err := os.OpenFile(bencher.ServerPIDFilename, os.O_RDONLY|os.O_CREATE, 0600)
+	f, err := os.OpenFile(bencher.ServerPIDFilename, os.O_RDONLY|os.O_CREATE|os.O_EXCL, 0600)
 	if err != nil {
 		return nil, err
 	}
@@ -75,46 +65,67 @@ func pidLock() (func() error, error) {
 
 var schedKey = []byte("sched")
 
-type runCmd struct {
-	db *bbolt.DB
-}
+type runCmd struct{}
 
-func run(ctx context.Context, db *bbolt.DB, docker *client.Client, j *bencher.Job) error {
+func run(ctx context.Context, j *bencher.Job) error {
 	// TODO: release pid immediately after initializing server. Do it. What happens with multithreading?
 	pidUnlock, err := pidLock()
 	if os.IsExist(err) {
-		sched(db, j)
+		log.Printf("scheduling %s", j.Version)
+		sched(j)
 		return nil
 		// todo corner race: lock in case pid is going to be released and runNext is going to run then
 	}
 	if err != nil {
 		return errors.Wrap(err, "pidLock")
 	}
-	err = j.RunNow(ctx, db, docker)
+
+	docker, err := client.NewClientWithOpts(client.FromEnv)
+	if err != nil {
+		return err
+	}
+	defer docker.Close()
+
+	log.Printf("running %s", j.Version)
+	err = j.RunNow(ctx, initDB, docker)
 	pidUnlock()
 	if err != nil {
 		return errors.Wrap(err, "runNow")
 	}
-	err = runNext(ctx, db, docker, j)
+	err = runNext(ctx, j)
 	if err != nil {
 		return errors.Wrap(err, "runNext")
 	}
 	return nil
 }
 
-func runNext(ctx context.Context, db *bbolt.DB, docker *client.Client, j *bencher.Job) error {
-	nextJ, err := lookupNext(db)
+func runNext(ctx context.Context, j *bencher.Job) error {
+	docker, err := client.NewClientWithOpts(client.FromEnv)
+	if err != nil {
+		return err
+	}
+	defer docker.Close()
+
+	nextJ, err := lookupNext()
 	if err != nil {
 		return errors.Wrap(err, "lookupNext")
 	}
 	if nextJ == nil {
 		return nil
 	}
-	defer unsched(db, nextJ.Version)
-	return errors.Wrap(run(ctx, db, docker, j), "run")
+	err = unsched(nextJ.Version)
+	if err != nil {
+		return errors.Wrap(err, "unsched")
+	}
+	return errors.Wrap(run(ctx, nextJ), "run")
 }
 
-func sched(db *bbolt.DB, job *bencher.Job) error {
+func sched(job *bencher.Job) error {
+	db, err := initDB()
+	if err != nil {
+		return err
+	}
+	defer db.Close()
 	return db.Update(func(tx *bbolt.Tx) error {
 		b, err := tx.CreateBucketIfNotExists(bencher.KeySched)
 		if err != nil {

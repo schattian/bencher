@@ -5,20 +5,16 @@ import (
 	"context"
 	"log"
 
-	"github.com/docker/docker/client"
 	"github.com/mitchellh/cli"
 	"github.com/pkg/errors"
 	"github.com/schattian/bencher/internal/bencher"
 	"go.etcd.io/bbolt"
 )
 
-type schedCmd struct {
-	db     *bbolt.DB
-	docker *client.Client
-}
+type schedCmd struct{}
 
-func prepareSched(db *bbolt.DB, docker *client.Client) cli.CommandFactory {
-	return func() (cli.Command, error) { return &schedCmd{db: db, docker: docker}, nil }
+func prepareSched() (cli.Command, error) {
+	return &schedCmd{}, nil
 }
 
 func (cmd *schedCmd) Run(args []string) int {
@@ -26,16 +22,21 @@ func (cmd *schedCmd) Run(args []string) int {
 		return 128
 	}
 	j := &bencher.Job{Version: args[0]}
-	err := run(context.Background(), cmd.db, cmd.docker, j)
+	err := run(context.Background(), j)
 	if err != nil {
 		log.Fatal(err)
 	}
 	return 0
 }
 
-func lookupNext(db *bbolt.DB) (*bencher.Job, error) {
+func lookupNext() (*bencher.Job, error) {
 	var nextVersion string
-	err := db.Update(func(tx *bbolt.Tx) error {
+	db, err := initDB()
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+	err = db.Update(func(tx *bbolt.Tx) error {
 		b, err := tx.CreateBucketIfNotExists(bencher.KeySched)
 		if err != nil {
 			return errors.Wrap(err, "CreateBucket")
@@ -58,7 +59,12 @@ func lookupNext(db *bbolt.DB) (*bencher.Job, error) {
 	return j, nil
 }
 
-func unsched(db *bbolt.DB, version string) error {
+func unsched(version string) error {
+	db, err := initDB()
+	if err != nil {
+		return err
+	}
+	defer db.Close()
 	return db.Update(func(tx *bbolt.Tx) error {
 		b := tx.Bucket(bencher.KeySched)
 		return b.Put(bencher.KeySched, b.Get(bencher.KeySched)[len(version)+1:])

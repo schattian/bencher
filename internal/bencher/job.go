@@ -33,7 +33,9 @@ func (j *Job) Status() string {
 	return status
 }
 
-func (j *Job) Complete(ctx context.Context, db *bbolt.DB, docker *client.Client) error {
+type DBGetter func() (*bbolt.DB, error)
+
+func (j *Job) Complete(ctx context.Context, dbGetter DBGetter, docker *client.Client) error {
 	wait, errCh := docker.ContainerWait(ctx, j.Version, container.WaitConditionNotRunning)
 	select {
 	case err := <-errCh:
@@ -45,7 +47,12 @@ func (j *Job) Complete(ctx context.Context, db *bbolt.DB, docker *client.Client)
 		if err != nil {
 			return errors.Wrap(err, "collect")
 		}
+		db, err := dbGetter()
+		if err != nil {
+			return errors.Wrap(err, "dbGetter")
+		}
 		err = j.Save(ctx, db)
+		db.Close()
 		if err != nil {
 			return errors.Wrap(err, "save")
 		}
@@ -78,7 +85,7 @@ func (j *Job) Save(ctx context.Context, db *bbolt.DB) error {
 
 // todo: collect in the meantime with follow and tail so it can be obtained through get
 func (j *Job) Collect(ctx context.Context, docker *client.Client) error {
-	out, err := docker.ContainerLogs(ctx, j.Version, types.ContainerLogsOptions{ShowStdout: true, Follow: true})
+	out, err := docker.ContainerLogs(ctx, j.Version, types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true})
 	if err != nil {
 		return err
 	}
@@ -92,12 +99,12 @@ func (j *Job) Collect(ctx context.Context, docker *client.Client) error {
 	return nil
 }
 
-func (j *Job) RunNow(ctx context.Context, db *bbolt.DB, docker *client.Client) error {
+func (j *Job) RunNow(ctx context.Context, dbGetter DBGetter, docker *client.Client) error {
 	err := docker.ContainerStart(ctx, j.Version, types.ContainerStartOptions{})
 	if err != nil {
 		return errors.Wrap(err, "start")
 	}
-	err = j.Complete(ctx, db, docker)
+	err = j.Complete(ctx, dbGetter, docker)
 	if err != nil {
 		return errors.Wrap(err, "complete")
 	}

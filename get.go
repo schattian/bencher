@@ -79,22 +79,32 @@ func (cmd *getCmd) runListJobs() error {
 		return err
 	}
 	w := tabwriter.NewWriter(os.Stdout, 3, 3, 3, ' ', 0)
-	fmt.Fprintln(w, "name\tstatus\t")
+	fmt.Fprintln(w, "NAME\tSTATUS\t")
 	for _, job := range jobs {
 		fmt.Fprintf(w, "%s\t%s\t\n", job.Version, job.Status())
 	}
+
+	err = cmd.db.View(func(tx *bbolt.Tx) error {
+		bSched := tx.Bucket(bencher.KeySched)
+		if bSched == nil {
+			return nil
+		}
+		sched := string(bSched.Get(bencher.KeySched))
+		for i, pendingVer := range strings.Split(sched, ",") {
+			if pendingVer == "" {
+				return nil
+			}
+			fmt.Fprintf(w, "%s\t%s\t\n", pendingVer, fmt.Sprintf("scheduled at order #%d", i))
+		}
+		return nil
+	})
 	w.Flush()
+
 	return nil
 }
 
 func listJobs(db *bbolt.DB) (jobs []*bencher.Job, err error) {
 	err = db.View(func(tx *bbolt.Tx) error {
-		bSched := tx.Bucket(bencher.KeySched)
-		if bSched == nil {
-			return nil
-		}
-		sched := bSched.Get(bencher.KeySched)
-		log.Printf("sched: %v\n", string(sched))
 		bJobs := tx.Bucket(bencher.KeyJob)
 		if bJobs == nil {
 			return nil
