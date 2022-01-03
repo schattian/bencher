@@ -56,12 +56,17 @@ func (cmd *getCmd) runGetJobDetail(version string) error {
 			return nil
 		}
 		b := bJobs.Get([]byte(version))
+		if b == nil {
+			return nil
+		}
 		return json.Unmarshal(b, j)
 	})
 	if err != nil {
 		return errors.Wrap(err, "db.View")
 	}
-
+	if j.Version == "" {
+		j.Version = version
+	}
 	detail := fmt.Sprintf("name: %s\nstatus: %s", j.Version, j.Status())
 	if j.Stdout != "" {
 		detail = fmt.Sprintf("%s\noutput:\n\t%s", detail, strings.ReplaceAll(j.Stdout, "\n", "\n\t"))
@@ -79,7 +84,7 @@ func (cmd *getCmd) runListJobs() error {
 		return err
 	}
 	w := tabwriter.NewWriter(os.Stdout, 3, 3, 3, ' ', 0)
-	fmt.Fprintln(w, "NAME\tSTATUS\t")
+	fmt.Fprintln(w, "name\tstatus\t")
 	for _, job := range jobs {
 		fmt.Fprintf(w, "%s\t%s\t\n", job.Version, job.Status())
 	}
