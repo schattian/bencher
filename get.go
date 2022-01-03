@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -29,6 +30,7 @@ func prepareGet() (cli.Command, error) {
 	if err != nil {
 		return nil, err
 	}
+	pruneContainers(context.Background(), docker)
 	return &getCmd{db: db, docker: docker}, nil
 }
 

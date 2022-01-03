@@ -28,6 +28,7 @@ import (
 func main() {
 	c := cli.NewCLI("app", "1.0.0")
 	c.Args = os.Args[1:]
+
 	c.Commands = map[string]cli.CommandFactory{
 		"run": prepareRun,
 		"get": prepareGet,
@@ -111,12 +112,7 @@ func pruneContainers(ctx context.Context, docker *client.Client) error {
 }
 
 func (cmd *runCmd) prepareRuntime(ctx context.Context, version string, forward []string) error {
-	err := pruneContainers(ctx, cmd.docker)
-	if err != nil {
-		return err
-	}
-
-	err = os.MkdirAll(bencher.HostServerRootPath, os.ModePerm)
+	err := os.MkdirAll(bencher.HostServerRootPath, os.ModePerm)
 	if err != nil {
 		return err
 	}
@@ -153,7 +149,7 @@ func (cmd *runCmd) prepareRuntime(ctx context.Context, version string, forward [
 		return err
 	}
 	if len(forward) == 0 {
-		fmt.Printf("command not given, using the default one (`go test -bench=. -benchmem`). To give a command just use args\n")
+		// fmt.Printf("command not given, using the default one (`go test -bench=. -benchmem`). To give a command just use args\n")
 		forward = defaultCmd
 	}
 	err = createContainer(ctx, cmd.docker, version, versionPath, forward)
@@ -275,11 +271,12 @@ func prepareRun() (cli.Command, error) {
 	if err != nil {
 		return nil, err
 	}
+	pruneContainers(context.Background(), docker)
 	return &runCmd{docker: docker}, nil
 }
 
 func (cmd *runCmd) Synopsis() string {
-	return `// TODO:`
+	return `runs a benchmark`
 }
 
 func (cmd *runCmd) Help() string {
