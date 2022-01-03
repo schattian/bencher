@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	ServerImage     = "bencher"
+	ServerImage     = "ghcr.io/schattian/bencher@sha256:a5b3c49e91f63578473af6ffec465fec17dbd2265ac374466f030010d4968df4"
 	ServerRootPath  = "/bencher"
 	ContainersLabel = "bencher"
 
