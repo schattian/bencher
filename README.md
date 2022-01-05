@@ -1,11 +1,10 @@
 # Bencher
 
-Bencher is a command line utility that runs go benchmarks in an isolated, scheduled environment. The idea is to have reproducible, versioned and comparable builds.
+Bencher is a command line utility that runs go benchmarks in an isolated, scheduled environment.
 
-The schedule is there to guarantee that you can run just one benchmark at the time, so there's no shared resources between them and you can guarantee that more or less the same resources were allocated for all of them. 
+The schedule is there to guarantee that you can run just one benchmark at the time, so there's no shared resources between them and you can guarantee that more or less the same resources were allocated for each of them. 
 
-Each build is versioned and saved independently, and you can restore them even if you discarded those changes afterwards.
-
+Each build is versioned and saved independently and you can restore them even if you discarded those changes afterwards, specially handy for comparing several different approaches.
 
 
 ## Requirements
