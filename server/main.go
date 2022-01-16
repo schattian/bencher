@@ -68,7 +68,6 @@ var schedKey = []byte("sched")
 type runCmd struct{}
 
 func run(ctx context.Context, j *bencher.Job) error {
-	// TODO: release pid immediately after initializing server. Do it. What happens with multithreading?
 	pidUnlock, err := pidLock()
 	if os.IsExist(err) {
 		log.Printf("scheduling %s", j.Version)
