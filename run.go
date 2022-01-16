@@ -28,15 +28,20 @@ type runCmd struct {
 }
 
 func (cmd *runCmd) Run(args []string) int {
-	var version string
-	args, version = popNameFlag(args)
+	args, version := popNameFlag(args)
 	if version == "" {
 		version = namesgenerator.GetRandomName(0)
 		fmt.Printf("version name not given, using `%s`. To give a version name use the `-name` flag\n", version)
 	}
+
+	args, image := popImageFlag(args)
+	if image == "" {
+		image = minDockerImage
+	}
+
 	ctx := context.Background()
 
-	err := cmd.prepareRuntime(ctx, version, args)
+	err := cmd.prepareRuntime(ctx, version, args, image)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -96,6 +101,10 @@ func popNameFlag(args []string) ([]string, string) {
 	return popFlagWithVal(args, "name")
 }
 
+func popImageFlag(args []string) ([]string, string) {
+	return popFlagWithVal(args, "image")
+}
+
 func pruneContainers(ctx context.Context, docker *client.Client) error {
 	args := filters.NewArgs(filters.Arg("label", fmt.Sprintf("%s=server", bencher.ContainersLabel)))
 	_, err := docker.ContainersPrune(ctx, args)
@@ -105,7 +114,7 @@ func pruneContainers(ctx context.Context, docker *client.Client) error {
 	return nil
 }
 
-func (cmd *runCmd) prepareRuntime(ctx context.Context, version string, forward []string) error {
+func (cmd *runCmd) prepareRuntime(ctx context.Context, version string, forward []string, image string) error {
 	err := os.MkdirAll(bencher.HostServerRootPath, os.ModePerm)
 	if err != nil {
 		return errors.Wrap(err, "MkdirAll")
@@ -139,7 +148,7 @@ func (cmd *runCmd) prepareRuntime(ctx context.Context, version string, forward [
 	}
 
 	// todo: add go version by module on this path
-	r, err := cmd.docker.ImagePull(ctx, minDockerImage, types.ImagePullOptions{})
+	r, err := cmd.docker.ImagePull(ctx, image, types.ImagePullOptions{})
 	if err != nil {
 		return err
 	}
@@ -153,7 +162,7 @@ func (cmd *runCmd) prepareRuntime(ctx context.Context, version string, forward [
 		forward = defaultCmd
 	}
 
-	err = createContainer(ctx, cmd.docker, version, versionPath, forward, wd[len(root):])
+	err = createContainer(ctx, cmd.docker, version, versionPath, forward, wd[len(root):], image)
 	if err != nil {
 		return errors.Wrap(err, "createContainer")
 	}
@@ -255,11 +264,11 @@ func getModPath() (string, error) {
 	}
 }
 
-func createContainer(ctx context.Context, docker *client.Client, version, versionPath string, cmd []string, wd string) error {
+func createContainer(ctx context.Context, docker *client.Client, version, versionPath string, cmd []string, wd string, image string) error {
 	_, err := docker.ContainerCreate(
 		ctx,
 		&container.Config{
-			Image:      minDockerImage,
+			Image:      image,
 			Env:        []string{"CGO_ENABLED=0"}, // TODO
 			Labels:     map[string]string{bencher.ContainersLabel: "runner"},
 			WorkingDir: bencher.RunnerRootPath + wd,
