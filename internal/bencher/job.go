@@ -22,8 +22,7 @@ type Job struct {
 
 var KeyJob = []byte("jobs")
 
-func (j *Job) Status() string {
-	status := "pending"
+func (j *Job) Status() (status string) {
 	if j.Stdout != "" {
 		status = "done"
 	}

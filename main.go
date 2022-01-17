@@ -12,18 +12,20 @@ import (
 func main() {
 	c := cli.NewCLI("app", "1.0.0")
 	c.Args = os.Args[1:]
-
 	c.Commands = map[string]cli.CommandFactory{
 		"run":     prepareRun,
 		"get":     prepareGet,
+		"ls":      prepareGet,
 		"restore": prepareRestore,
 		"rm":      prepareRm,
+		"cmp":     prepareCmp,
 	}
+	c.HiddenCommands = []string{"ls"} // alias of get
 	rand.Seed(time.Now().Unix())
 
 	exitStatus, err := c.Run()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("err ocurred initializing cli: %v", err)
 	}
 
 	os.Exit(exitStatus)

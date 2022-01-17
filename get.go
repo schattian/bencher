@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"strings"
 	"text/tabwriter"
@@ -17,42 +16,43 @@ import (
 )
 
 type getCmd struct {
-	db     *bbolt.DB
 	docker *client.Client
 }
 
 func prepareGet() (cli.Command, error) {
-	db, err := initDB()
-	if err != nil {
-		return nil, err
-	}
 	docker, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
 		return nil, err
 	}
 	pruneContainers(context.Background(), docker)
-	return &getCmd{db: db, docker: docker}, nil
+	return &getCmd{docker: docker}, nil
 }
 
 func (cmd *getCmd) Run(args []string) int {
-	var err error
+	db, err := initDB()
+	if err != nil {
+		fmt.Printf("err initDB: %v", err)
+		return 1
+	}
+	defer db.Close()
 	switch len(args) {
 	case 0:
-		err = cmd.runListJobs()
+		err = errors.Wrap(cmd.printListJobs(db), "printListJobs")
 	case 1:
-		err = cmd.runGetJobDetail(args[0])
+		err = errors.Wrap(cmd.printJobDetail(db, args[0]), "printJobDetail")
 	default:
-		return 129
+		return cli.RunResultHelp
 	}
 	if err != nil {
-		log.Fatal(err)
+		fmt.Printf("err %v", err)
+		return 1
 	}
 	return 0
 }
 
-func (cmd *getCmd) runGetJobDetail(version string) error {
+func (cmd *getCmd) printJobDetail(db *bbolt.DB, version string) error {
 	j := &bencher.Job{}
-	err := cmd.db.View(func(tx *bbolt.Tx) error {
+	err := db.View(func(tx *bbolt.Tx) error {
 		bJobs := tx.Bucket(bencher.KeyJob)
 		if bJobs == nil {
 			return nil
@@ -67,7 +67,18 @@ func (cmd *getCmd) runGetJobDetail(version string) error {
 		return errors.Wrap(err, "db.View")
 	}
 	if j.Version == "" {
-		j.Version = version
+		v, err := getRunningVersion()
+		if os.IsNotExist(err) {
+			err = nil
+		}
+		if err != nil {
+			return errors.Wrap(err, "getRunningVersion")
+		}
+		if v != version {
+			fmt.Printf("job %s not found", version)
+			return nil
+		}
+		j.Version = v
 	}
 	detail := fmt.Sprintf("name: %s\nstatus: %s", j.Version, j.Status())
 	if j.Stdout != "" {
@@ -80,8 +91,8 @@ func (cmd *getCmd) runGetJobDetail(version string) error {
 	return nil
 }
 
-func (cmd *getCmd) runListJobs() error {
-	jobs, err := listJobs(cmd.db)
+func (cmd *getCmd) printListJobs(db *bbolt.DB) error {
+	jobs, err := listJobs(db)
 	if err != nil {
 		return err
 	}
@@ -91,7 +102,17 @@ func (cmd *getCmd) runListJobs() error {
 		fmt.Fprintf(w, "%s\t%s\t\n", job.Version, job.Status())
 	}
 
-	err = cmd.db.View(func(tx *bbolt.Tx) error {
+	runningVer, err := getRunningVersion()
+	if os.IsNotExist(err) {
+		err = nil
+	}
+	if err != nil {
+		return errors.Wrap(err, "getRunningVersion")
+	}
+	if runningVer != "" {
+		fmt.Fprintf(w, "%s\t%s\t\n", runningVer, "running")
+	}
+	err = db.View(func(tx *bbolt.Tx) error {
 		bSched := tx.Bucket(bencher.KeySched)
 		if bSched == nil {
 			return nil
@@ -99,7 +120,7 @@ func (cmd *getCmd) runListJobs() error {
 		sched := string(bSched.Get(bencher.KeySched))
 		for i, pendingVer := range strings.Split(sched, ",") {
 			if pendingVer == "" {
-				return nil
+				continue
 			}
 			fmt.Fprintf(w, "%s\t%s\t\n", pendingVer, fmt.Sprintf("scheduled at order #%d", i))
 		}
@@ -130,9 +151,11 @@ func listJobs(db *bbolt.DB) (jobs []*bencher.Job, err error) {
 }
 
 func (cmd *getCmd) Synopsis() string {
-	return `schedule a job`
+	return `get job(s) detail or print the jobs list`
 }
 
 func (cmd *getCmd) Help() string {
-	return ``
+	return `Usage: bencher get [version]
+
+Print details for the given version. In case no version is given, list all jobs. It's aliased with "ls"`
 }

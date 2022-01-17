@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -41,13 +40,15 @@ func (cmd *runCmd) Run(args []string) int {
 
 	ctx := context.Background()
 
-	err := cmd.prepareRuntime(ctx, version, args, image)
+	err := errors.Wrap(cmd.prepareRuntime(ctx, version, args, image), "prepareRuntime")
 	if err != nil {
-		log.Fatal(err)
+		fmt.Printf("err %v", err)
+		return 1
 	}
-	err = runServerCmd(ctx, cmd.docker, []string{"sched", version}, os.Getenv("BENCHER_DEBUG") != "")
+	err = errors.Wrap(runServerCmd(ctx, cmd.docker, []string{"sched", version}, os.Getenv("BENCHER_DEBUG") != ""), "runServerCmd")
 	if err != nil {
-		log.Fatal(err)
+		fmt.Printf("err %v", err)
+		return 1
 	}
 	return 0
 }
@@ -308,9 +309,14 @@ func prepareRun() (cli.Command, error) {
 }
 
 func (cmd *runCmd) Synopsis() string {
-	return `runs a benchmark`
+	return `schedule a benchmark to be ran`
 }
 
 func (cmd *runCmd) Help() string {
-	return "TODO"
+	return `Usage: bencher run [--name] <go test command>
+
+Schedule a benchmark to be run, given by the <go test command>, and being "go test-bench=. -benchmem" the default value
+You can pass whichever flag you want to the <go test command> (e.g: bencher run go test -bench=^Regex -benchtime=5m -benchmem -v -run=^$)
+Consider that the command uses the current working directory and that can also be ran over subdirectories
+`
 }
