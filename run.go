@@ -313,10 +313,11 @@ func (cmd *runCmd) Synopsis() string {
 }
 
 func (cmd *runCmd) Help() string {
-	return `Usage: bencher run [--name] <go test command>
+	return `Usage: bencher run [--name] [--image] [go test command]
 
-Schedule a benchmark to be run, given by the <go test command>, and being "go test-bench=. -benchmem" the default value
-You can pass whichever flag you want to the <go test command> (e.g: bencher run go test -bench=^Regex -benchtime=5m -benchmem -v -run=^$)
+Schedule a benchmark to be run, given by the [go test command], and being "go test-bench=. -benchmem" the default value
+You can pass whichever flag you want to the [go test command] (e.g: bencher run go test -bench=^Regex -benchtime=5m -benchmem -v -run=^$)
 Consider that the command uses the current working directory and that can also be ran over subdirectories
-`
+
+If [--image] given, you can run under the specified docker image (default: golang alpine, targeted by digest)`
 }
