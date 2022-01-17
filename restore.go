@@ -16,15 +16,14 @@ func prepareRestore() (cli.Command, error) {
 
 func (cmd *restoreCmd) Run(args []string) int {
 	if len(args) != 2 {
-		fmt.Println(cmd.Help())
-		return 2
+		return cli.RunResultHelp
 	}
 	version, dst := args[0], args[1]
 	execCmd := exec.Command("rsync", "-a", "--exclude", "vendor", fmt.Sprintf("%s/%s/", bencher.HostVersionsPath, version), dst)
 	err := execCmd.Run()
 	if err != nil {
-		fmt.Printf("rsync failed: %v\n", err)
-		return 2
+		fmt.Printf("err rsync: %v\n", err)
+		return 1
 	}
 	return 0
 }
@@ -35,5 +34,6 @@ func (cmd *restoreCmd) Synopsis() string {
 
 func (cmd *restoreCmd) Help() string {
 	return `Usage: bencher restore <version> <destination>
-	You can either restore the version on a new dir or to the repo you've been working on by pointing <destination> to its root path`
+
+You can either restore the version on a new dir or to the repo you've been working on by pointing <destination> to its root path`
 }
