@@ -1,8 +1,6 @@
 name: amd64
 
 on:
-  schedule:
-    - cron: '31 6 * * *'
   push:
     branches: [ master ]
     # Publish semver tags as releases.
