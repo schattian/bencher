@@ -76,7 +76,6 @@ func (cmd *cmpCmd) cmp(db *bbolt.DB, versions ...string) error {
 		if job.Status() != "done" {
 			continue
 		}
-		fmt.Println(job.Stdout)
 		err := c.AddFile(job.Version, bytes.NewBufferString(job.Stdout))
 		if err != nil {
 			return errors.Wrap(err, "benchstat.Collection.AddFile: %v")
