@@ -116,6 +116,9 @@ func pruneContainers(ctx context.Context, docker *client.Client) error {
 }
 
 func (cmd *runCmd) prepareRuntime(ctx context.Context, version string, forward []string, image string) error {
+	if _, err := os.Stat(bencher.HostServerRootPath); os.IsNotExist(err) {
+		fmt.Println("preparing bencher runtime, this could take a while as it's your first time...")
+	}
 	err := os.MkdirAll(bencher.HostServerRootPath, os.ModePerm)
 	if err != nil {
 		return errors.Wrap(err, "MkdirAll")
