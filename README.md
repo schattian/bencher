@@ -2,6 +2,38 @@
 
 Bencher is a command line utility that runs and versions go benchmarks in an isolated and scheduled environment.
 
+You can schedule benchmarks on the fly without caring about versioning, implications of your local environment, unfair resource allocation or boring waiting times.
+
+- [Bencher](#bencher)
+  - [Installation](#installation)
+  - [Motivation](#motivation)
+  - [Requirements](#requirements)
+  - [Usage](#usage)
+  - [Recommendations](#recommendations)
+
+
+## Installation
+
+```
+go install github.com/schattian/bencher
+```
+
+## Motivation
+
+Trying several different approaches when optimizing was a pain for me, since you need to wait until the latest benchmark finished to start a new one (otherwise, you end up sharing resources, which makes benchmarks more unreliable).
+
+Also, I wanted a way to try those approaches without the overhead of managing versions with a VCS (sometimes, I just want to try multiple little changes in specific combinations), so I added the `restore` command for this.
+
+Finally, I wanted to allocate a certain amount of resources to the benchmarks, so they don't bother while I'm doing other stuff (personally, I use a separated docker host, see [Recommendations](#recommendations)).
+
+## Requirements
+
+It runs using the docker api, which implies that you must be a docker client, but you don't need to have the docker CLI installed nor host the docker server (i.e: if you've the socket, it's fine).
+Also, the benchmarks need to be part of a go module, although it doesn't matter where you want to run them (e.g: if you run them in a subdir).
+
+
+## Usage
+
 You can schedule multiple different benchmarks without thinking on your local environment
 
 ![gif of run](https://raw.githubusercontent.com/schattian/bencher/master/doc/run.gif)
@@ -27,22 +59,7 @@ Finally, you can remove unwanted versions (or even stop the one running). Notice
 ![gif of rm](https://raw.githubusercontent.com/schattian/bencher/master/doc/rm.gif)
 
 
-## Motivation
 
-Trying several different approaches when optimizing was a pain for me, since you need to wait until the latest benchmark finished to start a new one (otherwise, you end up sharing resources, which makes benchmarks more unreliable).
-Also, I wanted a way to try those approaches without the overhead of managing versions with a VCS (sometimes, I just want to try multiple little changes in specific combinations), so I added the `restore` command for this.
-Finally, I wanted to allocate a certain amount of resources to the benchmarks, so they don't bother while I'm doing other stuff (personally, I use a separated docker host, see [Recommendations](#recommendations)).
-
-## Requirements
-
-It runs using the docker api, which implies that you must be a docker client, but you don't need to have the docker CLI installed nor host the docker server (i.e: if you've the socket, it's fine).
-Also, the benchmarks need to be part of a go module, although it doesn't matter where you want to run them (e.g: if you run them in a subdir).
-
-## Installation
-
-```
-go install github.com/schattian/bencher
-```
 ## Recommendations
 
 More reliable results are obtained if you run them in a physically separated docker host (e.g: a raspi, a homeserver, a cloud instance).
