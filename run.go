@@ -217,6 +217,18 @@ func runServerCmd(ctx context.Context, docker *client.Client, cmd []string, debu
 		nil,
 		containerName,
 	)
+	if isNoSuchImage(err) { // todo: easier invalidation
+		r, err := docker.ImagePull(ctx, bencher.ServerImage, types.ImagePullOptions{})
+		if err != nil {
+			return err
+		}
+		defer r.Close()
+		_, err = io.Copy(io.Discard, r)
+		if err != nil {
+			return errors.Wrap(err, "io.Copy")
+		}
+		return runServerCmd(ctx, docker, cmd, debug)
+	}
 	if isContainerExists(err) {
 		return runServerCmd(ctx, docker, cmd, debug)
 	}
@@ -236,6 +248,13 @@ func runServerCmd(ctx context.Context, docker *client.Client, cmd []string, debu
 		}
 	}
 	return nil
+}
+
+func isNoSuchImage(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(err.Error(), "No such image")
 }
 
 func isContainerExists(err error) bool {
