@@ -4,7 +4,7 @@ Bencher is a command line utility that runs and versions go benchmarks in an iso
 
 You can schedule benchmarks on the fly without caring about versioning, implications of your local environment, unfair resource allocation or boring waiting times.
 
-- [Bencher](#bencher)
+
   - [Installation](#installation)
   - [Motivation](#motivation)
   - [Requirements](#requirements)
