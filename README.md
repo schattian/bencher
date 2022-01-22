@@ -4,27 +4,27 @@ Bencher is a command line utility that runs and versions go benchmarks in an iso
 
 You can schedule multiple different benchmarks without thinking on your local environment
 
-[gif of run](https://raw.githubusercontent.com/schattian/bencher/master/doc/run.gif)
+![gif of run](https://raw.githubusercontent.com/schattian/bencher/master/doc/run.gif)
 
 
 You can get the current list of jobs and inspect the results for completed jobs 
 
-[gif of ls](https://raw.githubusercontent.com/schattian/bencher/master/doc/ls.gif)
+![gif of ls](https://raw.githubusercontent.com/schattian/bencher/master/doc/ls.gif)
 
 
 You can benchstat across two or more versions
 
-[gif of cmp](https://raw.githubusercontent.com/schattian/bencher/master/doc/cmp.gif)
+![gif of cmp](https://raw.githubusercontent.com/schattian/bencher/master/doc/cmp.gif)
 
 
 Each build is versioned and saved independently so you can restore them even if you discarded those changes before, specially handy when trying several different approaches
 
-[gif of cmp](https://raw.githubusercontent.com/schattian/bencher/master/doc/restore.gif)
+![gif of restore](https://raw.githubusercontent.com/schattian/bencher/master/doc/restore.gif)
 
 
 Finally, you can remove unwanted versions (or even stop the one running). Notice that this removes the local copy of the version, so you cannot restore it afterwards
 
-[gif of cmp](https://raw.githubusercontent.com/schattian/bencher/master/doc/rm.gif)
+![gif of rm](https://raw.githubusercontent.com/schattian/bencher/master/doc/rm.gif)
 
 
 ## Motivation
