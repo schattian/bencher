@@ -74,6 +74,7 @@ func unsched(version string) error {
 func (cmd *schedCmd) Synopsis() string {
 	return `schedule a job`
 }
+
 func (cmd *schedCmd) Help() string {
 	return ``
 }

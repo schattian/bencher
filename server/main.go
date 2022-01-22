@@ -54,8 +54,12 @@ func initDB() (*bbolt.DB, error) {
 	return bbolt.Open(bencher.ServerDBFilename, 0600, bbolt.DefaultOptions)
 }
 
-func pidLock() (func() error, error) {
-	f, err := os.OpenFile(bencher.ServerPIDFilename, os.O_RDONLY|os.O_CREATE|os.O_EXCL, 0600)
+func pidLock(version string) (func() error, error) {
+	f, err := os.OpenFile(bencher.ServerPIDFilename, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0777)
+	if err != nil {
+		return nil, err
+	}
+	_, err = f.WriteString(version)
 	if err != nil {
 		return nil, err
 	}
@@ -68,8 +72,7 @@ var schedKey = []byte("sched")
 type runCmd struct{}
 
 func run(ctx context.Context, j *bencher.Job) error {
-	// TODO: release pid immediately after initializing server. Do it. What happens with multithreading?
-	pidUnlock, err := pidLock()
+	pidUnlock, err := pidLock(j.Version)
 	if os.IsExist(err) {
 		log.Printf("scheduling %s", j.Version)
 		sched(j)
